@@ -1,0 +1,15 @@
+# 개인정보 포함 가능 — 사용자별 케이스 폴더
+evaluations/fixtures/case-*/
+
+# 사용자별 페르소나 컨텍스트 (외부화된 본인 프로필)
+references/user-profile.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
