@@ -163,4 +163,4 @@ career-jd-matcher/
 
 ## 만든 이
 
-이한성 (Hanseong Lee) — 내부감사·윤리경영 전문가, Risk Solution Partner
+**[jason-risk-lab](https://github.com/jason-risk-lab)** — 내부감사·윤리경영 도메인 기반 Risk Solution Partner
