@@ -4,7 +4,7 @@ A Claude skill that handles the full mid-career job application package in one s
 
 경력직 이직 지원 패키지 전 과정(회사 분석 → JD 매칭 평가 → 경력기술서 정교화 → 직무 정체성 확인 → 자기소개서 정교화 → 9 페르소나 병렬 평가/리라이팅)을 한 번의 호출로 처리하는 Claude 스킬입니다.
 
-> **현재 버전: v1.6** — SKILL.md를 슬림화(버전 이력 분리·중복 제거), 오케스트레이터 페르소나와 Boundaries 블록을 명시한 문서 구조 리팩터링(동작 변경 없음). 핵심 평가 엔진(격리 sub-agent 병렬 dispatch, 등급별 Fact-Checker, 한국어 AI 작문 디텍션, Bull vs Bear 토론, cross-talk, 결정적 docx 생성)은 v1.5에서 도입되어 유지됩니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조.
+> **현재 버전: v1.7** — (1) 정합성 버그 5건 수정(v1.6.1: 비작동 fact-checker 경로 제거, 회귀 하네스 오탐 제거, 결정성 주장 한정, JD 키워드 가중항 정의, 페르소나 수 표기 통일), (2) Tier 2 개선: **결정적 AI 작문 디텍션 스크립트**(`scripts/ai_detection.py`), **quick/full 실행 모드**, **회사 분석 캐시**(30일 TTL). 핵심 평가 엔진(격리 sub-agent 병렬 dispatch, 등급별 Fact-Checker, 한국어 AI 작문 디텍션, Bull vs Bear 토론, cross-talk, 결정적 docx 렌더링)은 v1.5에서 도입되어 유지됩니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조.
 
 ## 무엇을 하는 스킬인가
 
@@ -39,7 +39,7 @@ A Claude skill that handles the full mid-career job application package in one s
 - **BCG 컨설턴트 톤** — 단순 회사 소개가 아니라 재무 수치·산업 구조·시장 전망에 기반한 분석. 본문 작성 후 Bull vs Bear 토론으로 단일 관점 편향을 보정.
 - **사용자 페르소나 존중** — 메모리/기존 자료에 드러난 직무 정체성을 임의로 바꾸지 않습니다. **Step 4-0**에서 1회 명시적으로 확인.
 - **정량 기반 의사결정** — Section 6의 지원 권장도는 인상이 아니라 4축 가중평균 100점 매트릭스로 산출. Bull/Bear 토론 결과가 채점 근거로 인용됨.
-- **결정적 산출** — docx 3개는 Python 스크립트로 생성해 실행할 때마다 동일한 결과를 보장합니다.
+- **결정적 렌더링** — 분석 본문(웹검색·평가)은 비결정적이지만, 확정된 마크다운 → docx 변환은 Python 스크립트로 결정적(같은 입력 → 항상 같은 docx). AI 작문 표지 카운트도 `ai_detection.py`로 결정화.
 
 ## 설치 방법
 
@@ -118,7 +118,9 @@ career-jd-matcher/
 │   ├── analysis-report.md                 # 분석 보고서 docx 생성 가이드
 │   └── user-profile.example.md            # 사용자 페르소나 템플릿 (선택적)
 ├── scripts/
-│   └── build_docx.py                      # v1.5: 결정적 docx 변환 스크립트
+│   ├── build_docx.py                      # v1.5: 결정적 docx 변환 스크립트
+│   └── ai_detection.py                    # v1.7: 한국어 AI 작문 표지 결정적 카운터
+├── cache/                                 # v1.7: 회사 분석 캐시 (gitignored, 30일 TTL)
 └── evaluations/
     ├── README.md                          # v1.5: 회귀 검증 하네스 가이드
     ├── run_eval.py                        # 회귀 테스트 러너
@@ -127,7 +129,7 @@ career-jd-matcher/
 
 ## 버전 이력
 
-버전별 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)에서 단일하게 관리합니다. 최신 버전은 **v1.6** (문서 구조 리팩터링), 핵심 평가 엔진은 **v1.5**에서 도입되었습니다.
+버전별 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)에서 단일하게 관리합니다. 최신 버전은 **v1.7** (정합성 수정 + AI 디텍션 스크립트·실행 모드·회사 분석 캐시), 핵심 평가 엔진은 **v1.5**에서 도입되었습니다.
 
 ## 관련 스킬
 

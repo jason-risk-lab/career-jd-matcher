@@ -131,9 +131,27 @@
 
 BLACK은 10점 만점에서 (1)~(10) 기존 + (11) 신설로 11개 항목 평가. 항목 (11)이 7점 이하면 자동으로 BLACK 종합점수 9점 미만으로 강등.
 
-## 자동 검출 패턴 (regex 후보)
+## 결정적 카운터 스크립트 (v1.7 신규) — 권장
 
-Claude가 직접 검출 시 다음 패턴을 참고:
+BLACK 페르소나가 임계치를 "눈으로 세는" 비결정성을 없애기 위해, 본 6개 카테고리를 결정적으로 카운트하는 `scripts/ai_detection.py`를 사용한다.
+
+```bash
+# 사람이 읽는 요약
+python scripts/ai_detection.py output/cover_letter_refined.md
+# BLACK sub-agent 입력용 JSON
+python scripts/ai_detection.py output/cover_letter_refined.md --json
+```
+
+출력은 카테고리별 카운트·감점, 합산 감점, **BLACK 항목 (11) 제안 점수(10 − 합산 감점)**, PASS/FAIL(합산 감점 ≤ 2 기준)을 준다. 같은 입력 → 항상 같은 결과(결정적). exit code는 PASS=0 / FAIL=1로 회귀 연동 가능.
+
+**운용 규약**:
+- BLACK 페르소나는 이 스크립트의 카운트를 **항목 (11)의 1차 근거**로 받는다. 점수를 그대로 박지 않고, 정체성 선언·문맥 예외(아래 "사용 시 주의")를 반영해 ±1 조정 가능.
+- **자동 리라이팅 금지** 원칙은 그대로. 스크립트는 카운트만, 수정 여부는 사용자 확인 후.
+- 스크립트를 쓸 수 없는 환경에서는 아래 regex로 Claude가 직접 카운트(폴백).
+
+## 자동 검출 패턴 (regex 후보, 폴백용)
+
+스크립트 미사용 시 Claude가 직접 검출할 때 참고(`ai_detection.py`와 동기화):
 
 ```regex
 A. 회피형 종결어미: (할 수 있도록|에 기여하고자|을 도모하여|을 추구하고자|보탬이 되고자)

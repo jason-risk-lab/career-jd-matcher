@@ -98,7 +98,7 @@ Step 2에서 발견한 갭 항목 중 critical한 것은 자소서에서 **선�
 
 ### Step 4-3: .docx 출력
 
-`/mnt/skills/public/docx/SKILL.md` 참조해 `/mnt/user-data/outputs/자기소개서_[회사명]_[직무명]_정교화.docx`로 저장.
+기본은 `scripts/build_docx.py`로 `output/자기소개서_[회사명]_[직무명]_정교화.docx` 생성. (fallback) claude.ai 웹 환경에서는 `/mnt/skills/public/docx/SKILL.md` 참조해 `/mnt/user-data/outputs/`로 저장.
 
 ## 출력 구조 (보고서 Section 4)
 

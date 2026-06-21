@@ -66,7 +66,7 @@ Step 2에서 도출된 강점(3점) 항목과 부분(1점) 항목을 우선 대�
 
 ### Step 3-4: .docx 출력
 
-`/mnt/skills/public/docx/SKILL.md`를 먼저 `view`로 읽어 작성법을 확인한 뒤, `/mnt/user-data/outputs/경력기술서_[회사명]_[직무명]_정교화.docx`로 저장한다.
+기본은 `scripts/build_docx.py`로 `output/경력기술서_[회사명]_[직무명]_정교화.docx` 생성. (fallback) claude.ai 웹 환경에서는 `/mnt/skills/public/docx/SKILL.md`를 먼저 읽고 `/mnt/user-data/outputs/`로 저장한다.
 
 구조는 사용자가 제공한 원본 경력기술서 구조를 그대로 따른다 (섹션 순서·서식). 본인이 익숙한 형식을 유지해야 면접 때 자연스럽다.
 

@@ -2,6 +2,25 @@
 
 career-jd-matcher 스킬의 버전별 변경 기록. `SKILL.md` 본문은 "지금 무엇을 어떻게 실행하라"만 담고, 변경 내역은 이 파일에서 단일하게 관리한다.
 
+## v1.7 (2026-06)
+
+Tier 2 — 비용·재현성·사용성 개선 (신규 기능).
+
+- **결정적 AI 작문 디텍션** — `scripts/ai_detection.py` 신규. `korean-ai-detection.md`의 6개 카테고리(A~F)를 결정적으로 카운트해 BLACK 항목 (11) 제안 점수·PASS/FAIL(합산 감점 ≤ 2)을 산출. 같은 입력 → 항상 같은 결과. BLACK 페르소나의 "눈으로 세기" 비결정성 제거. exit code(0/1)로 회귀 연동.
+- **실행 모드 (quick/full)** — 비용 큰 스킬에 `quick`(검색 6·평가 1회차+리라이팅 1·cross-talk off)과 `full`(기본, 현행) 모드 도입. 단 거짓 사실 금지·Fact-Checker·Bull/Bear는 모드 무관하게 항상 수행.
+- **회사 분석 캐시** — `cache/company_<slug>.md`에 Section 1을 30일 TTL로 저장. 같은 회사 재지원 시 검색 0회 재사용 옵션. 회사 정보만 저장(사용자 자료 분리).
+- **`.gitignore` 추가** — user-profile.md·fixtures 케이스·output·cache·docx·bak을 저장소에서 제외(개인정보 보호).
+
+## v1.6.1 (2026-06)
+
+정합성 버그 5건 수정 — 동작 정정, 신규 기능 없음.
+
+- **fact-checker 비작동 "권장 경로" 제거** — 존재하지 않는 `context: fork` frontmatter와 부재 파일 `references/fact-checker.skill`을 권장 경로로 안내하던 부분을 제거. 실동작하는 **격리 Task dispatch(원본·수정안 인라인 전달)** 를 기본 경로로 단일화. (`references/fact-checker.md`, `references/parallel-persona-design.md`, `references/persona-evaluation.md`)
+- **회귀 하네스 상시 오탐 제거** — `run_eval.py`의 `check_persona_evaluation`이 "Hard Fail" 컬럼 헤더 때문에 Pass 케이스를 상시 FAIL 처리하던 문제, `check_must_not`이 보고서 본문에 인용된 AI 패턴명을 카운트해 상시 오탐하던 문제를 각각 5.3의 명시 판정/집계 라인 파싱으로 교체.
+- **결정성 주장 한정** — SKILL.md 핵심원칙 6을 "분석 본문은 비결정적, md→docx 렌더링만 결정적(재현성)"으로 정정해 과장 제거.
+- **JD 매칭 키워드 가중항 정의** — 종합식의 `키워드 0.1` 항이 미정의였던 문제 해결. Soft signals를 0~3으로 채점하는 기준표를 `jd-matching-rubric.md`에 추가.
+- **페르소나 수 표기 통일** — "9 페르소나 = Fact-Checker 1 + Stage1 5 + Stage2 3, 병렬 dispatch는 8명" 규약을 명문화해 8/9 드리프트 제거.
+
 ## v1.6 (2026-05)
 
 문서 구조 리팩터링 — 동작 변경 없음, 유지보수성·컨텍스트 효율 개선.

@@ -394,7 +394,8 @@ def build_document(markdown_text, output_path, *, is_report=False, company_name=
 
 def process_manifest(manifest):
     """Process all files described in the manifest and report results."""
-    output_dir = Path(manifest["output_dir"])
+    # output_dir 미지정 시 현재 작업 폴더의 ./output 으로 저장 (로컬 환경 기본값).
+    output_dir = Path(manifest.get("output_dir") or "output")
     output_dir.mkdir(parents=True, exist_ok=True)
     company = manifest.get("company_name", "")
     job_title = manifest.get("job_title", "")
@@ -447,22 +448,22 @@ Run:
 
 Sample manifest.json:
 {
-  "output_dir": "/mnt/user-data/outputs/",
+  "output_dir": "output/",
   "company_name": "루닛",
   "job_title": "내부감사 책임자",
   "analysis_date": "2026-05-15",
   "files": {
     "resume": {
       "filename": "경력기술서_루닛_내부감사_정교화.docx",
-      "markdown_path": "/tmp/resume_refined.md"
+      "markdown_path": "output/resume_refined.md"
     },
     "cover_letter": {
       "filename": "자기소개서_루닛_내부감사_정교화.docx",
-      "markdown_path": "/tmp/cover_letter_refined.md"
+      "markdown_path": "output/cover_letter_refined.md"
     },
     "analysis_report": {
       "filename": "지원분석보고서_루닛_내부감사.docx",
-      "markdown_path": "/tmp/analysis_report.md",
+      "markdown_path": "output/analysis_report.md",
       "cover_meta": {
         "total_score": 71.8,
         "recommendation": "🟢 강력 지원",

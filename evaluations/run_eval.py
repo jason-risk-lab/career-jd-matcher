@@ -104,8 +104,16 @@ def check_persona_evaluation(expected: dict, report: str) -> list:
     pe = expected.get("persona_evaluation", {})
 
     if pe.get("stage_0_fact_checker", {}).get("hard_claims_pass"):
-        if "❌ FAIL" in report or "Fail" in report.lower():
-            issues.append("Stage 0 Fact-Checker Fail이 보고서에 등장 (기대: Pass)")
+        # 보고서에는 "Hard Fail" 컬럼 헤더가 상시 등장하므로 전체 텍스트에
+        # "fail"이 있는지로 판정하면 안 된다(상시 오탐). 5.3의 최종 판정 라인만 본다.
+        m = re.search(r"Fact-Checker\s*최종\s*판정[:\s]*([✅❌⏸]?\s*[A-Za-z_]+)", report)
+        if m:
+            verdict = m.group(1).upper()
+            if "PASS" not in verdict and "✅" not in m.group(1):
+                issues.append(
+                    f"Stage 0 Fact-Checker 최종 판정이 PASS가 아님 (기대: Pass) — '{m.group(1).strip()}'")
+        else:
+            issues.append("Fact-Checker 최종 판정 라인(5.3)을 보고서에서 찾지 못함")
 
     avg_min = pe.get("final_average_min")
     if avg_min:
@@ -164,16 +172,25 @@ def check_outputs(expected: dict, outputs: dict) -> list:
 def check_must_not(expected: dict, report: str) -> list:
     issues = []
     forbidden = expected.get("must_not", [])
-    for keyword in forbidden:
-        if "거짓" in keyword and "❌" in report:
-            issues.append(f"의심 시그널: {keyword}")
 
+    # "거짓 사실 추가" 금지 검증: 보고서 전체의 ❌ 개수로 보면 표의 Fail 마커까지
+    # 잡혀 상시 오탐이다. 대신 5.3이 명시하는 긍정 확인 문구의 '부재'를 신호로 본다.
+    if any("거짓" in k for k in forbidden):
+        if not re.search(r"거짓\s*사실\s*추가\s*없음", report):
+            issues.append("'거짓 사실 추가 없음' 확인 문구(5.3)가 보고서에 없음")
+
+    # AI 작문 표지: 보고서는 패턴명·Before/After를 본문에 인용하므로 전체 카운트는
+    # 무의미하다. 보고서가 스스로 집계해 적는 'BLACK 항목 (11) ... X건'만 신뢰한다.
     if "한국어 AI 작문 표지" in str(forbidden):
-        ai_patterns = [r"할 수 있도록", r"에 기여하고자", r"을 도모하여",
-                       r"다양한 경험", r"폭넓은 역량", r"탁월한 성과"]
-        count = sum(len(re.findall(p, report)) for p in ai_patterns)
-        if count > 5:
-            issues.append(f"AI 작문 표지 의심 패턴 {count}건 (기준 5건 초과)")
+        m = re.search(r"AI\s*작문\s*표지[:\s]*(\d+)\s*건", report)
+        if m:
+            count = int(m.group(1))
+            threshold = 2  # korean-ai-detection.md: 합산 감점 ≤ 2점 기준
+            if count > threshold:
+                issues.append(
+                    f"BLACK 항목 (11) AI 작문 표지 {count}건 (기준 {threshold}건 초과)")
+        else:
+            issues.append("BLACK 항목 (11) AI 작문 표지 집계(5.3)를 보고서에서 찾지 못함")
 
     return issues
 

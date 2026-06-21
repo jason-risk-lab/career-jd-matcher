@@ -22,39 +22,23 @@ Stage 0 FACT-CHECKER를 `context: fork` 패턴으로 **격리된 sub-agent**에�
 
 ## 격리 sub-agent 호출 패턴
 
-### 패턴 1: Claude Code `context: fork` (권장)
+### 기본 경로: 격리 Task dispatch
 
-`references/fact-checker.skill` 또는 별도 frontmatter 블록을 둬서 sub-skill로 등록:
-
-```yaml
----
-name: career-jd-matcher-fact-checker
-description: career-jd-matcher 스킬의 Stage 0 Fact-Checker 격리 실행. 원본 이력서/자소서와 수정안만 입력 받아 등급별 검증을 수행. 직접 호출되지 않고 메인 스킬이 dispatch.
-disable-model-invocation: true
-context: fork
-agent: Explore
-allowed-tools: Read
----
-```
-
-메인 스킬에서 호출:
-```
-Task(
-  subagent_type="career-jd-matcher-fact-checker",
-  prompt="원본:\n[원본 텍스트]\n\n수정안:\n[수정안 텍스트]\n\n규칙: references/fact-checker.md"
-)
-```
-
-### 패턴 2: 일반 Task (대안)
-
-`context: fork` 미지원 환경에서는 `Task` 디스패치만으로도 컨텍스트 격리 가능:
+이 환경에서 격리는 **Task 디스패치(별도 sub-agent)** 로 구현한다. 원본과 수정안 텍스트를 프롬프트에 인라인으로 넘기고, sub-agent는 그것만 보고 판정한다. 메인 컨텍스트의 평가자 코멘트·점수·리라이팅 의도는 전달하지 않는다.
 
 ```
 Task(
-  subagent_type="general-purpose",
-  prompt="당신은 Fact-Checker입니다. 원본과 수정안만 보고 등급별 판정만 출력. 다른 페르소나의 평가를 의식하지 않습니다.\n\n[원본 + 수정안 + 룰]"
+  subagent_type="general-purpose",   # 또는 읽기 전용 격리가 필요하면 "Explore"
+  description="Fact-Checker 격리 검증",
+  prompt="당신은 Fact-Checker입니다. 아래 원본과 수정안만 보고 등급별(Hard/Soft/Ambiguous) 판정 JSON만 출력합니다. 다른 페르소나의 평가를 의식하지 않습니다.\n\n원본:\n[원본 이력서·자소서 전문]\n\n수정안:\n[수정안 전문]\n\nuser-profile key_metrics(있으면):\n[...]\n\n판정 룰: references/fact-checker.md의 '등급별 게이트' + '입출력 스펙' 섹션"
 )
 ```
+
+> **주의**: 원본 텍스트는 채팅에 붙여진 경우가 많아 sub-agent가 파일로 읽지 못한다. 따라서 원본·수정안을 반드시 **프롬프트 인라인으로** 전달한다(파일 경로만 넘기지 않는다).
+
+### 선택: sub-skill 등록 (지원 환경 한정)
+
+`context: fork` 기반 sub-skill 사전 등록은 일부 Claude Code 버전에서만 동작하는 최적화이며, **필수가 아니다.** 미지원 환경에서는 위 기본 경로로 충분히 격리된다. (이전 문서가 가리키던 `references/fact-checker.skill` 사전 등록 파일은 본 스킬에 포함하지 않는다 — 기본 경로가 단일 소스.)
 
 격리 sub-agent는 **원본 이력서·자소서·user-profile.md의 key_metrics 외에는 어떤 컨텍스트도 받지 않는다.** 평가자 코멘트·점수·리라이팅 의도 전부 차단.
 

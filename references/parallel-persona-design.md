@@ -1,4 +1,6 @@
-# 페르소나 9명 병렬 sub-agent 설계 (Phase 3-6) — v1.5 신규
+# 페르소나 병렬 sub-agent 설계 (Phase 3-6) — v1.5 신규
+
+**페르소나 수 규약**: 전체 9 페르소나 = Fact-Checker 1 + Stage 1(5-Color) 5 + Stage 2(채용 라인업) 3. 이 중 **병렬 dispatch 대상은 Stage 1·2의 8명**이고, **Fact-Checker는 별도로 더 강하게 격리**해 디스패치한다(`references/fact-checker.md`). 따라서 "9 페르소나" = 평가자 총원, "8명 병렬" = 동시 dispatch 묶음. 두 숫자는 모순이 아니다.
 
 기존 v1.4 이하에서 9 페르소나는 메인 컨텍스트에서 직렬로 채점되었다. v1.5부터 페르소나별 격리 sub-agent로 디스패치하여 **병렬 실행**한다.
 
@@ -23,7 +25,7 @@
 
 ## 디스패치 패턴
 
-### A. 권장: Claude Code `context: fork` + `Task` 병렬
+### A. 기본: `Task` 병렬 dispatch (한 메시지에 8개 동시 발행)
 
 ```
 [Step 5 시작]

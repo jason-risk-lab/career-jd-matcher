@@ -4,10 +4,19 @@ evaluations/fixtures/case-*/
 # 사용자별 페르소나 컨텍스트 (외부화된 본인 프로필)
 references/user-profile.md
 
+# 런타임 산출물·캐시 (v1.7)
+output/
+cache/
+*.docx
+manifest.json
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
+
+# 백업
+*.bak
 
 # OS / Editor
 .DS_Store

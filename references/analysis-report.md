@@ -16,7 +16,7 @@
 
 `지원분석보고서_[회사명]_[직무명].docx`
 
-`/mnt/user-data/outputs/`에 저장 후 `present_files`로 다른 두 docx와 함께 제시.
+작업 폴더의 `output/`에 저장(claude.ai 웹 환경에서는 `/mnt/user-data/outputs/` 후 `present_files`로 제시).
 
 ## 보고서 구조 (목차 순서)
 
@@ -179,7 +179,7 @@ footers: {
 1. `/mnt/skills/public/docx/SKILL.md` `view`로 최신 구문 재확인
 2. 채팅에 출력된 Section 1~6 마크다운 텍스트를 메모리에 보유
 3. docx-js로 생성 스크립트 작성 (`/home/claude/build_report.js`)
-4. `node /home/claude/build_report.js` 실행 → `/mnt/user-data/outputs/지원분석보고서_[회사명]_[직무명].docx` 생성
+4. `node /home/claude/build_report.js` 실행 → `output/지원분석보고서_[회사명]_[직무명].docx` 생성 (claude.ai 웹 환경에서는 `/mnt/user-data/outputs/`)
 5. `python /mnt/skills/public/docx/scripts/office/validate.py` 로 검증
 6. 세 docx 파일을 `present_files`로 한 번에 제시
 

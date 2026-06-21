@@ -3,7 +3,7 @@ name: career-jd-matcher
 description: 경력직 이직 지원 패키지 전 과정(회사 분석 → JD 매칭 → 경력기술서 정교화 → 자기소개서 정교화 → 9 페르소나 평가/리라이팅)을 한 번의 호출로 처리한다. 회사 분석은 BCG 컨설턴트 관점(재무·Porter 5 Forces·Bull/Bear 토론), 페르소나 평가는 격리 sub-agent 병렬 dispatch + 등급별 Fact-Checker + 한국어 AI 작문 디텍션 + cross-talk 라운드. 산출물은 채팅 마크다운 보고서 + 3개 docx (이력서·자소서·분석보고서). 트리거 키워드 — "이 회사 분석해줘", "이 JD에 내 경력 맞춰줘", "이직 지원 도와줘", "자소서 다듬어줘", "지원서 정교화", "이력서 첨삭", "자소서 평가", "매칭도 봐줘", "이직 패키지", "JD 매칭".
 when_to_use: 사용자가 (1) 채용공고(URL 또는 본문), (2) 회사명, (3) 본인 경력기술서 또는 자기소개서 초안을 함께 제시하면서 분석·매칭·정교화 요청을 할 때 사용. 회사명 + 채용공고 + 본인 경력 자료의 조합이 등장하면 명시 키워드 없이도 트리거. 단순 회사 정보 조회·일반론적 이직 조언·면접 질문 단독 요청·연봉 협상 상담은 트리거하지 않음. 모의면접은 별도 mock-interview 스킬 사용.
 allowed-tools: Bash, Read, Write, Edit, WebFetch
-version: 1.6
+version: 1.7
 changelog: 변경 이력은 CHANGELOG.md 참조.
 ---
 
@@ -29,7 +29,7 @@ changelog: 변경 이력은 CHANGELOG.md 참조.
 3. **멀티 페르소나 병렬 평가** — Stage 0 Fact-Checker + Stage 1 5-Color(BLACK·RED·SILVER·BLUE·GOLD) + Stage 2 채용 라인업(헤드헌터·현업 매니저·HR). Stage 1·2 8명은 격리 sub-agent에 병렬 dispatch, 1라운드 후 cross-talk 라운드 선택 적용. → `references/persona-evaluation.md`, `references/parallel-persona-design.md`
 4. **사용자 페르소나 존중** — 자소서 톤·산업 선호도·거버넌스 민감도는 `references/user-profile.md` 한 파일에서만 로딩하며 임의로 바꾸지 않는다. 파일 부재 시 일반 모드. **Step 4-0에서 1회 명시적으로 확인.**
 5. **정량 기반 의사결정** — 지원 권장도는 인상이 아니라 Section 6의 4축 가중평균 100점 매트릭스로 산출. → `references/decision-matrix.md`
-6. **결정적 산출** — docx 3개는 `scripts/build_docx.py`로 생성해 실행할 때마다 동일한 결과를 보장.
+6. **결정적 렌더링** — 분석 본문(웹검색·페르소나 평가)은 비결정적이지만, 일단 확정된 마크다운을 docx로 변환하는 단계는 `scripts/build_docx.py`로 결정적. 즉 **같은 마크다운 입력 → 항상 동일한 docx**를 보장(렌더링 재현성). 분석 결과 자체의 재현성을 보장하는 것은 아니다.
 
 ## 입력 점검
 
@@ -42,6 +42,17 @@ changelog: 변경 이력은 CHANGELOG.md 참조.
 
 채용공고가 URL이면 `web_fetch`로 본문을 가져온다. `references/user-profile.md` 존재 여부 확인. 부재 시 한 줄 안내.
 
+## 실행 모드 (v1.7 신규)
+
+비용·시간이 큰 스킬이므로 두 모드를 둔다. 사용자가 "빠르게/quick" 신호를 주면 `quick`, 아니면 `full`(기본). 입력 점검 직후 1줄로 모드를 알린다.
+
+| 모드 | 검색 | 페르소나 평가 | cross-talk | 용도 |
+|------|------|--------------|-----------|------|
+| **full** (기본) | 10회 (3+3+2+2 쿼터) | 최대 3회차 | 선택 적용 | 최종 제출본, 정밀 분석 |
+| **quick** | 6회 (재무3·시장2·평판1) | 1회차 + 리라이팅 1회 | off | 빠른 초안·반복 수정 |
+
+`quick`이라도 **거짓 사실 금지·Fact-Checker·Bull/Bear는 생략하지 않는다** (안전·정합성 게이트는 모드와 무관). 줄이는 것은 탐색 폭과 평가 반복 횟수뿐이다.
+
 ## 워크플로우 (5단계 순차 실행)
 
 각 단계는 자체 가이드 파일을 참조한다.
@@ -49,7 +60,9 @@ changelog: 변경 이력은 CHANGELOG.md 참조.
 ### Step 1: 회사 분석 (BCG 컨설턴트 관점 + Bull/Bear)
 참조: `references/company-analysis.md`
 
-웹검색 **10회 타입 쿼터** (`3 재무 / 3 시장·뉴스 / 2 평판 / 2 경쟁사·JD 부서`). BCG 프레임워크(Porter 5 Forces / BCG Matrix / SWOT / Christensen) 중 적용 가능한 것 선택. 본문 1.1~1.8 완성 후 Bull vs Bear 토론(Section 1.8.5) → 1.9 종합 진단의 입력.
+**캐시 먼저 확인 (v1.7)**: `cache/company_<회사명-slug>.md`가 있고 헤더의 날짜가 30일 이내면, 재검색 없이 그 내용을 재사용할지 1줄로 묻는다(다수 지원 시 검색 0회). 캐시는 회사 정보만 담고 사용자 자료는 담지 않는다. 분석 완료 후 Section 1 본문을 같은 경로에 `<!-- cached: YYYY-MM-DD -->` 헤더와 함께 저장. 상세 규약은 `references/company-analysis.md`의 "회사 분석 캐시".
+
+웹검색 **10회 타입 쿼터** (`3 재무 / 3 시장·뉴스 / 2 평판 / 2 경쟁사·JD 부서`, `quick` 모드는 6회). BCG 프레임워크(Porter 5 Forces / BCG Matrix / SWOT / Christensen) 중 적용 가능한 것 선택. 본문 1.1~1.8 완성 후 Bull vs Bear 토론(Section 1.8.5) → 1.9 종합 진단의 입력.
 
 ### Step 2: JD ↔ 경력기술서 매칭 평가
 참조: `references/jd-matching-rubric.md`
@@ -131,7 +144,7 @@ JD 키워드 미러링, 정량화, STAR 구조 압축, 순서 재배치. **거�
 생성 방식:
 1. Claude가 위 마크다운을 작성
 2. `scripts/build_docx.py manifest.json` 호출로 3개 docx 자동 생성
-3. 출력 위치: `/mnt/user-data/outputs/`
+3. 출력 위치: 현재 작업 폴더의 `output/` (manifest의 `output_dir` 미지정 시 기본값; claude.ai 웹 환경에서는 `/mnt/user-data/outputs/` 사용)
 
 파일명:
 - `경력기술서_[회사명]_[직무명]_정교화.docx`
