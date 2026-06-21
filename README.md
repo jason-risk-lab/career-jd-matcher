@@ -4,7 +4,7 @@ A Claude skill that handles the full mid-career job application package in one s
 
 경력직 이직 지원 패키지 전 과정(회사 분석 → JD 매칭 평가 → 경력기술서 정교화 → 직무 정체성 확인 → 자기소개서 정교화 → 9 페르소나 병렬 평가/리라이팅)을 한 번의 호출로 처리하는 Claude 스킬입니다.
 
-> **현재 버전: v1.7** — (1) 정합성 버그 5건 수정(v1.6.1: 비작동 fact-checker 경로 제거, 회귀 하네스 오탐 제거, 결정성 주장 한정, JD 키워드 가중항 정의, 페르소나 수 표기 통일), (2) Tier 2 개선: **결정적 AI 작문 디텍션 스크립트**(`scripts/ai_detection.py`), **quick/full 실행 모드**, **회사 분석 캐시**(30일 TTL). 핵심 평가 엔진(격리 sub-agent 병렬 dispatch, 등급별 Fact-Checker, 한국어 AI 작문 디텍션, Bull vs Bear 토론, cross-talk, 결정적 docx 렌더링)은 v1.5에서 도입되어 유지됩니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조.
+> **현재 버전: v1.8** — 산출물 품질 개선: **회사 분석 grounding 게이트**(정량 주장 ✅확인/⚠️추정/⛔미확인 3등급, 미확인 수치 차단·자소서 비전달), **자소서 첫 문장 기준**(원칙 5, 검증된 사실만 인용), **리라이팅 우선순위 규칙**(페르소나 점수 vs AI 표지 충돌 시 사람 목소리 우선), **분석 보고서 경로·섹션 정합**(build_docx.py 정식화·면접질문 6.5 통일), **build_docx 바이트 결정성**. (이전 v1.7: AI 디텍션 스크립트·quick/full 모드·회사 분석 캐시 / v1.6.1: 정합성 버그 5건 수정.) 핵심 평가 엔진(격리 sub-agent 병렬 dispatch, 등급별 Fact-Checker, 한국어 AI 작문 디텍션, Bull vs Bear 토론, cross-talk)은 v1.5에서 도입되어 유지됩니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조.
 
 ## 무엇을 하는 스킬인가
 
@@ -129,7 +129,7 @@ career-jd-matcher/
 
 ## 버전 이력
 
-버전별 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)에서 단일하게 관리합니다. 최신 버전은 **v1.7** (정합성 수정 + AI 디텍션 스크립트·실행 모드·회사 분석 캐시), 핵심 평가 엔진은 **v1.5**에서 도입되었습니다.
+버전별 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)에서 단일하게 관리합니다. 최신 버전은 **v1.8** (산출물 품질 — 회사 분석 grounding·자소서 첫 문장 기준·리라이팅 우선순위·보고서 정합·바이트 결정성), 핵심 평가 엔진은 **v1.5**에서 도입되었습니다.
 
 ## 관련 스킬
 

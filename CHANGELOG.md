@@ -2,6 +2,16 @@
 
 career-jd-matcher 스킬의 버전별 변경 기록. `SKILL.md` 본문은 "지금 무엇을 어떻게 실행하라"만 담고, 변경 내역은 이 파일에서 단일하게 관리한다.
 
+## v1.8 (2026-06)
+
+산출물 품질 개선 — 지원자가 받는 분석·자소서·보고서의 신뢰성·통과율을 직접 끌어올림.
+
+- **회사 분석 grounding 게이트** — Section 1의 모든 정량 주장을 ✅확인/⚠️추정/⛔미확인 3등급으로 표기하고, 미확인 수치는 만들지 않으며 자소서로 넘기지 않는다. 1.9 직전 self-check 3줄 추가. 이력서의 Fact-Checker에 대응하는 "회사 분석의 Fact-Checker". (`references/company-analysis.md`)
+- **자소서 첫 문장 기준(원칙 5)** — 각 문항 첫 문장을 정량 사실·회사 구체 맥락·직무 정체성 중 하나로 시작하도록 강제. 명언·일반론·회사 칭송 금지(AI 표지 E·F와 직결). 회사 인용은 ✅확인 사실·방향성 사실로만 한정해 면접 반박 리스크 제거. (`references/cover-letter-refinement.md`)
+- **리라이팅 우선순위 규칙** — 페르소나 점수(완성도↑)와 BLACK AI 작문 표지가 충돌할 때 사람 목소리 우선, 바닐라 수렴 시 부분 롤백, `ai_detection.py`로 합산 감점 ≤ 2 유지. (`references/persona-evaluation.md`)
+- **분석 보고서 경로·섹션 정합** — `build_docx.py`를 정식 경로로, docx-js를 claude.ai 웹 fallback으로 명확화. 면접 질문을 별도 Section 7이 아닌 6.5로 통일(SKILL.md·decision-matrix.md와 일치). 하드코딩된 버전 표기 제거. (`references/analysis-report.md`)
+- **build_docx 바이트 결정성** — docx zip 엔트리 타임스탬프·core.xml 생성/수정 시각을 고정해 **같은 마크다운 → 바이트 동일 docx** 보장(기존 "결정적" 주장을 실측 성립). (`scripts/build_docx.py`)
+
 ## v1.7 (2026-06)
 
 Tier 2 — 비용·재현성·사용성 개선 (신규 기능).

@@ -20,7 +20,7 @@
 
 ## 보고서 구조 (목차 순서)
 
-분석 보고서는 다음 7개 섹션으로 구성. 채팅 마크다운의 Section 1~6 + 표지 1페이지.
+분석 보고서는 **표지 1페이지 + 채팅 마크다운의 Section 1~6**으로 구성. 면접 예상 질문은 별도 섹션이 아니라 **Section 6의 6.5**다(`references/decision-matrix.md`와 일치). 본문 섹션 번호는 SKILL.md 최종 산출물 형식·decision-matrix.md와 **반드시 동일하게** 유지한다.
 
 ```
 [표지]
@@ -31,13 +31,13 @@
 
 [목차]
 
-1. 회사 분석 (BCG 컨설턴트 관점)
+1. 회사 분석 (BCG 컨설턴트 관점 + Bull/Bear)
 2. JD 매칭 대시보드
 3. 경력기술서 변경 전후 비교
 4. 자기소개서 변경 전후 비교 + 적용된 직무 정체성
 5. 멀티 페르소나 평가 결과 (9 페르소나 + Stage 0 Fact-Checker)
 6. 종합 판단 및 권고 (의사결정 매트릭스)
-7. 면접 예상 질문 Top 5 + 답변 키 포인트
+   - 6.1 매트릭스 · 6.2 권장도 · 6.3 강점 · 6.4 갭 · 6.5 면접 예상 질문 Top 5
 ```
 
 ## 콘텐츠 포함 원칙
@@ -56,9 +56,15 @@
 | 헤더/푸터 | 회사명·페이지 번호 |
 | 표 서식 (음영·테두리) | docx-js 표 표준 적용 |
 
-## docx 생성 코드 패턴 (요약)
+## docx 생성: 정식 경로 (v1.8 정정)
 
-상세 구문은 `/mnt/skills/public/docx/SKILL.md` 참조. 본 보고서 작성 시 핵심 패턴:
+**정식 경로는 `scripts/build_docx.py`다.** 채팅 마크다운 보고서를 `output/analysis_report.md`로 저장한 뒤, manifest의 `files.analysis_report`에 `markdown_path`와 `cover_meta`(종합점수·권장도·한줄결론)를 채워 `python scripts/build_docx.py manifest.json`을 호출하면 표지·헤더·푸터·페이지브레이크가 자동 적용된 docx가 **바이트 결정적**으로 생성된다(이력서·자소서와 한 번에). manifest 스키마는 `scripts/build_docx.py` 상단 docstring 참조.
+
+아래 docx-js(JavaScript) 패턴은 **`build_docx.py`를 쓸 수 없는 claude.ai 웹 환경 전용 fallback**이다. 로컬/Claude Code 환경에서는 사용하지 않는다.
+
+## (Fallback) docx-js 코드 패턴 (요약, claude.ai 웹 전용)
+
+상세 구문은 `/mnt/skills/public/docx/SKILL.md` 참조. fallback 작성 시 핵심 패턴:
 
 ### 1) 페이지 설정 (한국 사용자 → A4 권장)
 
@@ -155,7 +161,7 @@ headers: {
   default: new Header({
     children: [new Paragraph({
       alignment: AlignmentType.RIGHT,
-      children: [new TextRun({ text: "[회사명] 지원 분석 보고서 v1.3", size: 18, color: "808080" })]
+      children: [new TextRun({ text: "[회사명] 지원 분석 보고서", size: 18, color: "808080" })]
     })]
   })
 },
@@ -176,12 +182,16 @@ footers: {
 
 ## 작업 순서 (실행 시)
 
-1. `/mnt/skills/public/docx/SKILL.md` `view`로 최신 구문 재확인
-2. 채팅에 출력된 Section 1~6 마크다운 텍스트를 메모리에 보유
-3. docx-js로 생성 스크립트 작성 (`/home/claude/build_report.js`)
-4. `node /home/claude/build_report.js` 실행 → `output/지원분석보고서_[회사명]_[직무명].docx` 생성 (claude.ai 웹 환경에서는 `/mnt/user-data/outputs/`)
-5. `python /mnt/skills/public/docx/scripts/office/validate.py` 로 검증
-6. 세 docx 파일을 `present_files`로 한 번에 제시
+**정식(로컬/Claude Code)**:
+1. 채팅에 출력한 Section 1~6 마크다운을 `output/analysis_report.md`로 저장
+2. manifest.json에 3개 파일(resume·cover_letter·analysis_report) 경로 + `cover_meta` 작성
+3. `python scripts/build_docx.py manifest.json` 1회 호출 → 3개 docx를 `output/`에 결정적 생성
+4. 생성된 3개 docx 파일을 사용자에게 함께 제시
+
+**Fallback(claude.ai 웹)**:
+1. `/mnt/skills/public/docx/SKILL.md`를 `view`로 최신 구문 재확인
+2. docx-js 스크립트 작성 → `node`로 실행 → `/mnt/user-data/outputs/`에 생성
+3. `python /mnt/skills/public/docx/scripts/office/validate.py`로 검증 후 `present_files`로 제시
 
 ## 출력 시 주의
 

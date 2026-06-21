@@ -1,9 +1,12 @@
 """Build resume/cover-letter/analysis-report .docx files from a JSON manifest."""
 
 import argparse
+import datetime
 import json
 import re
+import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 from docx import Document
@@ -378,9 +381,56 @@ def add_cover_page(doc, company_name, job_title, meta, analysis_date):
     run.add_break(WD_BREAK.PAGE)
 
 
+DEFAULT_FIXED_DT = datetime.datetime(2020, 1, 1, 0, 0, 0)
+
+
+def fixed_datetime(analysis_date):
+    """결정적 타임스탬프. analysis_date(YYYY-MM-DD)가 있으면 그것을, 없으면 상수."""
+    if analysis_date:
+        try:
+            return datetime.datetime.strptime(analysis_date.strip(), "%Y-%m-%d")
+        except ValueError:
+            pass
+    return DEFAULT_FIXED_DT
+
+
+def _patch_core_xml(data, dt):
+    """docProps/core.xml의 생성·수정 시각을 고정값으로 치환."""
+    iso = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    txt = data.decode("utf-8")
+    txt = re.sub(r"(<dcterms:created[^>]*>)[^<]*(</dcterms:created>)",
+                 r"\g<1>" + iso + r"\g<2>", txt)
+    txt = re.sub(r"(<dcterms:modified[^>]*>)[^<]*(</dcterms:modified>)",
+                 r"\g<1>" + iso + r"\g<2>", txt)
+    return txt.encode("utf-8")
+
+
+def finalize_deterministic(output_path, dt):
+    """저장된 docx를 바이트 결정적으로 재패키징.
+
+    docx는 zip이라 엔트리 타임스탬프와 core.xml 생성/수정 시각이 매 실행 달라진다.
+    엔트리 순서는 유지(Word 호환)하고 타임스탬프만 고정 + core.xml 시각 치환하여
+    '같은 마크다운 입력 → 바이트 단위 동일 docx'를 보장한다.
+    """
+    output_path = str(output_path)
+    with zipfile.ZipFile(output_path, "r") as zin:
+        items = [(n, zin.read(n)) for n in zin.namelist()]
+    dt_tuple = (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    tmp_path = output_path + ".tmp"
+    with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zout:
+        for name, data in items:
+            if name == "docProps/core.xml":
+                data = _patch_core_xml(data, dt)
+            zi = zipfile.ZipInfo(name, date_time=dt_tuple)
+            zi.compress_type = zipfile.ZIP_DEFLATED
+            zi.external_attr = 0o644 << 16
+            zout.writestr(zi, data)
+    shutil.move(tmp_path, output_path)
+
+
 def build_document(markdown_text, output_path, *, is_report=False, company_name="",
                    job_title="", analysis_date="", cover_meta=None):
-    """Build one .docx file end to end."""
+    """Build one .docx file end to end (byte-deterministic)."""
     doc = Document()
     set_page(doc)
     set_default_style(doc)
@@ -390,6 +440,7 @@ def build_document(markdown_text, output_path, *, is_report=False, company_name=
     blocks = parse_markdown(markdown_text)
     render_blocks(doc, blocks, hr_as_page_break=is_report)
     doc.save(str(output_path))
+    finalize_deterministic(output_path, fixed_datetime(analysis_date))
 
 
 def process_manifest(manifest):

@@ -3,7 +3,7 @@ name: career-jd-matcher
 description: 경력직 이직 지원 패키지 전 과정(회사 분석 → JD 매칭 → 경력기술서 정교화 → 자기소개서 정교화 → 9 페르소나 평가/리라이팅)을 한 번의 호출로 처리한다. 회사 분석은 BCG 컨설턴트 관점(재무·Porter 5 Forces·Bull/Bear 토론), 페르소나 평가는 격리 sub-agent 병렬 dispatch + 등급별 Fact-Checker + 한국어 AI 작문 디텍션 + cross-talk 라운드. 산출물은 채팅 마크다운 보고서 + 3개 docx (이력서·자소서·분석보고서). 트리거 키워드 — "이 회사 분석해줘", "이 JD에 내 경력 맞춰줘", "이직 지원 도와줘", "자소서 다듬어줘", "지원서 정교화", "이력서 첨삭", "자소서 평가", "매칭도 봐줘", "이직 패키지", "JD 매칭".
 when_to_use: 사용자가 (1) 채용공고(URL 또는 본문), (2) 회사명, (3) 본인 경력기술서 또는 자기소개서 초안을 함께 제시하면서 분석·매칭·정교화 요청을 할 때 사용. 회사명 + 채용공고 + 본인 경력 자료의 조합이 등장하면 명시 키워드 없이도 트리거. 단순 회사 정보 조회·일반론적 이직 조언·면접 질문 단독 요청·연봉 협상 상담은 트리거하지 않음. 모의면접은 별도 mock-interview 스킬 사용.
 allowed-tools: Bash, Read, Write, Edit, WebFetch
-version: 1.7
+version: 1.8
 changelog: 변경 이력은 CHANGELOG.md 참조.
 ---
 
@@ -25,11 +25,11 @@ changelog: 변경 이력은 CHANGELOG.md 참조.
 상세 규칙은 각 references 파일에 둔다. 여기서는 원칙만 선언한다.
 
 1. **거짓 사실 절대 금지 (최우선)** — 사용자 경력기술서·자소서에 없는 경험을 **어떤 이유로도** 추가하지 않는다. 점수·매칭률을 위해서도 없는 경험/자격증/수치를 만들지 않는다. 판단이 애매하면 **쓰지 않는다**. 격리 Fact-Checker가 Hard/Soft/Ambiguous 3등급으로 검증하며 Hard FAIL 시 즉시 원상 복구 + 사이클 중단. → `references/fact-checker.md`, `references/resume-refinement.md`
-2. **BCG 컨설턴트 관점의 회사 분석** — 단순 회사 소개가 아니라 재무 수치 + 산업 구조(Porter's 5 Forces) + 시장 전망 + 학자·이론 인용으로 구성. 타입 강제 쿼터(3+3+2+2)로 10회 검색하고, 본문 작성 후 Bull vs Bear 토론으로 단일 관점 편향을 보정. → `references/company-analysis.md`
+2. **BCG 컨설턴트 관점의 회사 분석** — 단순 회사 소개가 아니라 재무 수치 + 산업 구조(Porter's 5 Forces) + 시장 전망 + 학자·이론 인용으로 구성. 타입 강제 쿼터(3+3+2+2)로 10회 검색하고, 본문 작성 후 Bull vs Bear 토론으로 단일 관점 편향을 보정. **정량 주장은 ✅확인/⚠️추정/⛔미확인 3등급 grounding 규율로 검증(회사 분석의 Fact-Checker)** — 미확인 수치는 만들지 않고 자소서로 넘기지 않는다. → `references/company-analysis.md`
 3. **멀티 페르소나 병렬 평가** — Stage 0 Fact-Checker + Stage 1 5-Color(BLACK·RED·SILVER·BLUE·GOLD) + Stage 2 채용 라인업(헤드헌터·현업 매니저·HR). Stage 1·2 8명은 격리 sub-agent에 병렬 dispatch, 1라운드 후 cross-talk 라운드 선택 적용. → `references/persona-evaluation.md`, `references/parallel-persona-design.md`
 4. **사용자 페르소나 존중** — 자소서 톤·산업 선호도·거버넌스 민감도는 `references/user-profile.md` 한 파일에서만 로딩하며 임의로 바꾸지 않는다. 파일 부재 시 일반 모드. **Step 4-0에서 1회 명시적으로 확인.**
 5. **정량 기반 의사결정** — 지원 권장도는 인상이 아니라 Section 6의 4축 가중평균 100점 매트릭스로 산출. → `references/decision-matrix.md`
-6. **결정적 렌더링** — 분석 본문(웹검색·페르소나 평가)은 비결정적이지만, 일단 확정된 마크다운을 docx로 변환하는 단계는 `scripts/build_docx.py`로 결정적. 즉 **같은 마크다운 입력 → 항상 동일한 docx**를 보장(렌더링 재현성). 분석 결과 자체의 재현성을 보장하는 것은 아니다.
+6. **결정적 렌더링** — 분석 본문(웹검색·페르소나 평가)은 비결정적이지만, 일단 확정된 마크다운을 docx로 변환하는 단계는 `scripts/build_docx.py`로 결정적. 즉 **같은 마크다운 입력 → 바이트 단위 동일 docx**를 보장(zip 타임스탬프·생성시각 고정, 렌더링 재현성). 분석 결과 자체의 재현성을 보장하는 것은 아니다.
 
 ## 입력 점검
 
