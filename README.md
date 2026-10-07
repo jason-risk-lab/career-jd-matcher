@@ -1,139 +1,105 @@
 # career-jd-matcher
 
-A Claude skill that handles the full mid-career job application package in one shot — company analysis (with Bull/Bear debate), JD-resume matching, resume refinement, cover letter refinement, and multi-persona evaluation with isolated sub-agent parallel dispatch and tiered fact-checking.
+A Claude skill for mid-career job applications. Given a job posting and your resume, it first decides on one screen whether the role is worth applying to (requirements check + company research). Only if you go ahead does it tailor your resume and cover letter to the posting and produce Word files. It never adds facts that are not in your original material.
 
-경력직 이직 지원 패키지 전 과정(회사 분석 → JD 매칭 평가 → 경력기술서 정교화 → 직무 정체성 확인 → 자기소개서 정교화 → 9 페르소나 병렬 평가/리라이팅)을 한 번의 호출로 처리하는 Claude 스킬입니다.
+경력직 이직 지원을 돕는 Claude 스킬입니다. 채용공고와 경력기술서를 받아 **먼저 이 회사에 지원할지를 한 화면으로 판정**하고, 지원하기로 하면 경력기술서와 자기소개서를 그 공고에 맞춰 고쳐 Word 파일로 만듭니다. 원본에 없는 사실은 쓰지 않습니다.
 
-> **현재 버전: v1.8** — 산출물 품질 개선: **회사 분석 grounding 게이트**(정량 주장 ✅확인/⚠️추정/⛔미확인 3등급, 미확인 수치 차단·자소서 비전달), **자소서 첫 문장 기준**(원칙 5, 검증된 사실만 인용), **리라이팅 우선순위 규칙**(페르소나 점수 vs AI 표지 충돌 시 사람 목소리 우선), **분석 보고서 경로·섹션 정합**(build_docx.py 정식화·면접질문 6.5 통일), **build_docx 바이트 결정성**. (이전 v1.7: AI 디텍션 스크립트·quick/full 모드·회사 분석 캐시 / v1.6.1: 정합성 버그 5건 수정.) 핵심 평가 엔진(격리 sub-agent 병렬 dispatch, 등급별 Fact-Checker, 한국어 AI 작문 디텍션, Bull vs Bear 토론, cross-talk)은 v1.5에서 도입되어 유지됩니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조.
+> **현재 버전: v2.0** — 전면 재설계. "판단 먼저, 서류는 그다음". 9 페르소나 평가·BCG 프레임워크·채점 반복을 걷어내고, 지원 판정(4축) → 사용자에게 한 번 묻기 → 서류 작성 → 독립 검토 2건 1회 → Word 3개로 단순화했습니다. 모든 지침과 스크립트가 `SKILL.md` 한 파일에 들어 있습니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조. v1.x가 필요하면 [`v1.8` 태그](https://github.com/jason-risk-lab/career-jd-matcher/tree/v1.8)를 쓰세요.
 
-## 무엇을 하는 스킬인가
+## 왜 판단이 먼저인가
 
-채용공고와 본인의 경력기술서·자기소개서를 입력하면 다음을 자동으로 수행합니다.
+서류를 다 고친 뒤에 "보류"가 나오면 시간과 작업이 모두 버려집니다. 그리고 지원자에게 필요한 것은 분석 과정의 기록이 아니라 결론과 제출할 서류입니다. 그래서 결과물을 짧게 고정했습니다: 화면에는 판정 하나, 파일은 제출용 2개와 2쪽짜리 브리프 1개.
 
-1. **회사 분석 (BCG 컨설턴트 관점 + Bull/Bear)** — 매출/영업이익률/현금흐름 시계열, Porter's 5 Forces, BCG Matrix, 국내·글로벌 시장 전망, 학자·이론 인용 (Michael Porter, Christensen, Damodaran 등). 웹검색은 `3 재무 + 3 시장·뉴스 + 2 평판 + 2 경쟁사·JD 부서` 타입 쿼터로 10회 강제. 본문 작성 후 **Bull vs Bear 1라운드 토론**으로 단일 관점 편향 보정.
-2. **JD 매칭 평가** — Must-have / Nice-to-have / Soft signals로 요건 분해, 0~3점 스코어링, 종합 매칭률 산출.
-3. **경력기술서 정교화** — JD 키워드 미러링, 정량화, STAR 구조 압축. **거짓 사실 추가 절대 금지** 원칙 엄수.
-4. **직무 정체성 확인 (Step 4-0)** — 자소서 톤의 기준이 될 본인의 직무 정체성을 1회 명시적으로 확인. 메모리·기존 자료의 자동 반영을 막아 사용자 통제권을 보장.
-5. **자기소개서 정교화** — 회사 고유 정보 반영, 1,000자 이내 압축, 4-0에서 확정된 직무 정체성 일관 노출.
-6. **멀티 페르소나 평가 (9명, 최대 3회차, 병렬 + cross-talk)** — 다음 9명이 각각 평가/검증합니다:
-   - **Stage 0 (사실 검증)**: FACT-CHECKER — **격리 sub-agent**에서 3등급(Hard / Soft / Ambiguous) 판정. Hard FAIL 시 즉시 원상 복구 + 사이클 중단.
-   - **Stage 1 (5-Color Harness)**: BLACK · RED · SILVER · BLUE · GOLD — 보편적 완성도 10점 만점. BLACK은 **한국어 AI 작문 표지 검출(11번째 항목)** 포함.
-   - **Stage 2 (채용 라인업)**: 헤드헌터 · 현업 매니저 · HR — 실전 통과 가능성 10점 만점.
-   - Stage 1·2 페르소나 8명을 **격리 sub-agent에 병렬 dispatch**. 1라운드 후 **cross-talk 라운드** 선택적 적용 (핵심 비판자 코멘트 공유 후 재채점).
-7. **의사결정 매트릭스 (Section 6)** — Growth 30% / Safety 30% / Meaning 25% / Fit 15% 가중평균 100점 산출. Bull/Bear 결과가 Growth·Safety 채점 근거로 인용됨.
+## 무엇을 하는가
+
+**1단계. 지원 판단**
+- 공고를 필수 / 중요 / 우대 요건으로 나누고 **중요도를 먼저 고정한 뒤** 경력기술서와 대조합니다(충족 / 부분 / 갭). 퍼센트 매칭률 대신 "필수 4개 중 충족 2, 부분 1, 미달 1"처럼 셉니다.
+- 결정적 갭과 합격 가능성(상·중·하)을 먼저 매기고, 그 결과로 회사 조사 깊이를 정합니다. 붙기 어려운 공고에 조사 예산을 다 쓰지 않습니다.
+- 회사 조사는 **질문 여섯 개**에 답할 만큼만 합니다: 무엇으로 돈을 버나 / 3년 재무 / 최근 1년 사건·사고 / 왜 지금 뽑나 / 내가 들어갈 조직은 힘이 있나 / 사람이 남는 회사인가. 1차 자료(공시·감사보고서·감독기관) 우선, 모든 수치에 출처와 기준 시점.
+- 감사·윤리·컴플라이언스 직무용 **직무 렌즈**: 보고라인, 감사책임자 임면 동의권, 조직 크기와 위상, 감사위원회 활동, 내부회계관리제도, 제보 채널, 사고 직후 채용 여부.
+- 성장성 / 안정성 / 자리의 실질 / 합격 가능성 4축을 상·중·하로 보고, **가장 약한 축이 판정을 정합니다**: 지원 / 조건부 지원 / 보류. 후회 시나리오와 헤드헌터에게 물을 것을 함께 줍니다.
+
+**사용자에게 한 번 묻기** — 앞세울 경험, 원본에 없는 사용자만 아는 사실(해 본 일, 숫자의 속, 본인 몫, 지원 이유)을 기본값과 함께 한 화면에서 묻습니다. 답은 `확인된_사실.md`로 쌓여 다음 공고에서 다시 묻지 않습니다.
+
+**2단계. 서류 작성** — 경력기술서(원본 틀·쪽수 유지, 위쪽 요약 4줄을 공고 요건에 대한 답으로)와 자기소개서(세 문단, 800~1,000자). 기계가 쓴 티를 지우는 체크리스트 포함.
+
+**3단계. 검토 한 번, 수정 한 번** — 내장 스크립트가 숫자·역할 표현·자격 약어가 원본에 있는지, 글자 수, 문체 표지, 빈칸, 쪽수를 봅니다. 그다음 글쓴이의 맥락을 넘기지 않은 **독립 검토자 두 명**(사실 대조자, 채용 책임자)에게 한 번씩 보이고 한 번 고칩니다. 같은 모델이 자기 글을 여러 번 채점·수정하면 점수만 오르고 글은 기계처럼 매끈해지기 때문입니다.
 
 ## 산출물
 
-채팅 마크다운 보고서 1개 + docx 파일 3개
+| 파일 | 용도 | 분량 |
+|------|------|------|
+| `경력기술서_[회사]_[직무].docx` | 제출용 | 원본 쪽수 이내 |
+| `자기소개서_[회사]_[직무].docx` | 제출용 | 1쪽 |
+| `지원브리프_[회사]_[직무].docx` | 본인 보관용, 면접 준비 때 재사용 | 2쪽 이내 |
 
-- **채팅 내 마크다운 보고서** — 회사 분석(Bull/Bear 포함), JD 매칭 대시보드, 변경 전후 비교표, 9 페르소나 평가표(병렬 + cross-talk), 의사결정 매트릭스 모두 포함
-- **`경력기술서_[회사명]_[직무명]_정교화.docx`** — 제출용
-- **`자기소개서_[회사명]_[직무명]_정교화.docx`** — 제출용
-- **`지원분석보고서_[회사명]_[직무명].docx`** — 면접 준비·의사결정 트래커 보관용
+보류로 끝난 공고에는 파일을 만들지 않습니다(사용자가 요청하면 만듭니다).
 
-**docx 생성 방식**: Claude가 마크다운을 작성한 뒤 `scripts/build_docx.py manifest.json`을 호출해 결정적으로 docx 3개를 만듭니다. 스크립트를 쓸 수 없는 환경에서는 docx-js 즉석 생성을 fallback으로 사용.
+## 핵심 원칙: 사실 규칙
 
-## 핵심 원칙
+- 서류에 쓸 수 있는 사실의 출처는 셋뿐입니다: 이번에 준 원본 문서, 대화에서 사용자가 직접 말한 것, `확인된_사실.md`.
+- 숫자 부풀리기, 역할 격상(참여 → 주도), 팀 성과를 개인 성과로, 예정을 완료로, 다른 회사 성과 옮겨 붙이기, 범위 수식어 이동 등 흔한 실수를 구체적으로 금지합니다.
+- 숫자가 없으면 지어내지 않고 묻습니다. 모른다고 하면 숫자 없이 씁니다.
+- 회사 사실도 같습니다. 찾지 못한 것은 "없다"가 아니라 "확인 안 됨"으로 쓰고 어디를 봤는지 적습니다.
 
-- **거짓 사실 절대 금지** — 점수를 올리기 위해서도, 매칭률을 높이기 위해서도, 없는 경험/자격증/수치를 추가하지 않습니다. 갭은 갭으로 두고 학습 의지·확장성으로 다룹니다. **격리 Fact-Checker sub-agent**가 Hard/Soft/Ambiguous 3등급으로 자동 검증하며, Hard FAIL 시 사이클을 즉시 중단합니다.
-- **BCG 컨설턴트 톤** — 단순 회사 소개가 아니라 재무 수치·산업 구조·시장 전망에 기반한 분석. 본문 작성 후 Bull vs Bear 토론으로 단일 관점 편향을 보정.
-- **사용자 페르소나 존중** — 메모리/기존 자료에 드러난 직무 정체성을 임의로 바꾸지 않습니다. **Step 4-0**에서 1회 명시적으로 확인.
-- **정량 기반 의사결정** — Section 6의 지원 권장도는 인상이 아니라 4축 가중평균 100점 매트릭스로 산출. Bull/Bear 토론 결과가 채점 근거로 인용됨.
-- **결정적 렌더링** — 분석 본문(웹검색·평가)은 비결정적이지만, 확정된 마크다운 → docx 변환은 Python 스크립트로 결정적(같은 입력 → 항상 같은 docx). AI 작문 표지 카운트도 `ai_detection.py`로 결정화.
+## 내 기준 설정
+
+`SKILL.md` 위쪽의 **"내 기준"** 블록에 본인의 직무 정체성, 가려는 방향, 먼저 거르는 조건(통근·언어 등), 강하게 보는 위험, 익숙한 산업을 적으세요. 비어 있으면 일반 기준으로 진행합니다. 이 블록은 판정 기준으로만 쓰이고, 서류에 들어갈 사실의 근거로는 쓰이지 않습니다. 개인 정보이니 공개 저장소에 올릴 때는 지우세요.
 
 ## 설치 방법
 
 ### Claude.ai 사용자
 
-1. 이 레포지토리에서 `career-jd-matcher.skill` 파일을 다운로드합니다.
+1. 이 저장소에서 `career-jd-matcher.skill` 파일을 다운로드합니다.
 2. Claude.ai 설정 → Capabilities → Skills로 이동합니다.
-3. "Upload skill" 또는 "Add skill"을 선택하고 `.skill` 파일을 업로드합니다.
+3. "Upload skill"을 선택하고 `.skill` 파일을 업로드합니다.
 
-(Claude.ai의 스킬 업로드 UI는 시기에 따라 위치·이름이 다를 수 있습니다. 현재 UI에서 보이지 않으면 https://support.claude.com 에서 "skill" 검색.)
+(스킬 업로드 UI는 시기에 따라 위치·이름이 다를 수 있습니다. 보이지 않으면 https://support.claude.com 에서 "skill" 검색.)
 
 ### Claude Code 사용자
-
-레포지토리를 클론한 뒤 스킬 폴더를 `~/.claude/skills/` 아래에 둡니다.
 
 ```bash
 git clone https://github.com/jason-risk-lab/career-jd-matcher.git ~/.claude/skills/career-jd-matcher
 ```
 
-`scripts/build_docx.py`를 사용하려면 `python-docx` 패키지가 필요합니다.
+Word 파일 생성에 `python-docx`가 필요합니다(쪽수 확인에는 선택적으로 `pypdf`).
 
 ```bash
-pip install python-docx
+pip install python-docx pypdf
 ```
 
 ## 사용법
 
-스킬이 설치된 Claude 세션에서, 다음과 같이 요청합니다.
-
 ```
-이 회사 분석하고 내 경력에 맞춰 지원서 정교화해줘.
+이 공고에 지원할지 봐주고, 지원할 만하면 서류까지 맞춰줘.
 
 채용공고: [URL 또는 본문]
-회사명: [회사명]
-경력기술서: [텍스트 또는 첨부]
-자기소개서: [텍스트 또는 첨부]
+경력기술서: [첨부]
+자기소개서 초안: [있으면 첨부]
 ```
 
-스킬이 자동으로 5단계 + Step 4-0 정체성 확인을 순차 실행합니다. 웹검색 10회 + 페르소나 평가 사이클(병렬 dispatch)로 몇 분 소요됩니다. 중간에 직무 정체성 1줄 응답을 한 번 요청합니다.
+| 요청 | 하는 일 |
+|------|---------|
+| "지원 도와줘", "맞춰줘" | 판정 → 멈추고 확인 → 서류 작성. 보류면 판정에서 멈춤 |
+| "이 회사 어때", "지원할지 봐줘" | 판정만 |
+| 판단 후 "자소서만", "경력기술서만" | 그 문서만 |
+| 공고 없음 | 공고를 요청 (공고 없이는 요건 대조 불가) |
 
-## 트리거 조건
-
-다음 문구가 등장하면 스킬이 자동으로 작동합니다.
-
-- "이 회사 분석해줘"
-- "이 JD에 내 경력 맞춰줘"
-- "이직 지원 도와줘"
-- "자소서 다듬어줘"
-- "매칭도 봐줘"
-- 채용공고 + 회사명 + 경력 자료가 동시에 등장하는 경우 (명시적 키워드 없이도)
-
-다음 경우엔 작동하지 않습니다.
-
-- 단순 회사 정보 조회
-- 채용공고나 경력 자료 없이 일반론적 이직 조언
-- 면접 예상 질문만 따로 요청 → **별도 `mock-interview` 스킬 사용**
-- 모의면접 → **별도 `mock-interview` 스킬 사용**
-- 연봉 협상 문의
+면접 준비, 모의면접, 연봉 협상, 공고 없는 일반 이직 상담에는 쓰지 않습니다.
 
 ## 폴더 구조
 
 ```
 career-jd-matcher/
-├── SKILL.md                              # 메인 워크플로우 + 트리거 + 페르소나
-├── CHANGELOG.md                          # 버전별 변경 이력 (단일 출처)
-├── references/
-│   ├── company-analysis.md                # Step 1: 회사 리서치 (BCG/Porter + Bull/Bear)
-│   ├── jd-matching-rubric.md              # Step 2: JD ↔ 경력 매칭 스코어링
-│   ├── resume-refinement.md               # Step 3: 경력기술서 정교화
-│   ├── cover-letter-refinement.md         # Step 4: 자소서 정교화 (1,000자)
-│   ├── persona-evaluation.md              # Step 5: 9 페르소나 평가 사이클
-│   ├── parallel-persona-design.md         # v1.5: 격리 sub-agent 병렬 + cross-talk
-│   ├── fact-checker.md                    # v1.5: 등급별 Fact-Checker 게이트
-│   ├── korean-ai-detection.md             # v1.5: 한국어 AI 작문 표지 검출
-│   ├── decision-matrix.md                 # Section 6: 의사결정 매트릭스
-│   ├── analysis-report.md                 # 분석 보고서 docx 생성 가이드
-│   └── user-profile.example.md            # 사용자 페르소나 템플릿 (선택적)
-├── scripts/
-│   ├── build_docx.py                      # v1.5: 결정적 docx 변환 스크립트
-│   └── ai_detection.py                    # v1.7: 한국어 AI 작문 표지 결정적 카운터
-├── cache/                                 # v1.7: 회사 분석 캐시 (gitignored, 30일 TTL)
-└── evaluations/
-    ├── README.md                          # v1.5: 회귀 검증 하네스 가이드
-    ├── run_eval.py                        # 회귀 테스트 러너
-    └── fixtures/                          # 사용자 케이스 픽스처 (gitignored)
+├── SKILL.md                 # 전체 워크플로우 + 내장 스크립트(apply_kit.py)
+├── CHANGELOG.md             # 버전별 변경 이력
+└── career-jd-matcher.skill  # Claude.ai 업로드용 패키지
 ```
-
-## 버전 이력
-
-버전별 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)에서 단일하게 관리합니다. 최신 버전은 **v1.8** (산출물 품질 — 회사 분석 grounding·자소서 첫 문장 기준·리라이팅 우선순위·보고서 정합·바이트 결정성), 핵심 평가 엔진은 **v1.5**에서 도입되었습니다.
 
 ## 관련 스킬
 
-- **`mock-interview`** — 본 스킬의 산출물(특히 분석 보고서 docx의 면접 예상 질문)을 입력으로 모의면접 시뮬레이션 (5개 모드: 인성·PT·기술·토론·AI면접). 별도 호출 필요.
+- **`interview-qa-prep`** — 면접 전날 읽는 회사 브리프. 이 스킬의 지원 브리프를 이어서 씁니다.
+- **`mock-interview`** — 모의면접 시뮬레이션.
 
 ## 라이선스
 
