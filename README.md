@@ -4,7 +4,7 @@ A Claude skill for mid-career job applications. Given a job posting and your res
 
 경력직 이직 지원을 돕는 Claude 스킬입니다. 채용공고와 경력기술서를 받아 **회사·직무를 화면 한 장으로 요약**하고, 원하면 **경력기술서 1장과 자기소개서만** 공고에 맞춰 고친 뒤 평가합니다. 최종 수정은 본인이 합니다.
 
-> **현재 버전: v3.0** — 목적 중심 재설계. 지원/보류 판정과 합격 가능성 예측을 없애고 판단 재료만 줍니다. 고치는 범위를 1장과 자기소개서로 좁히고, 그 둘은 다섯 관점(5-Color)으로 제대로 평가합니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조. 이전 버전은 [`v2.0`](https://github.com/jason-risk-lab/career-jd-matcher/tree/v2.0), [`v1.8`](https://github.com/jason-risk-lab/career-jd-matcher/tree/v1.8) 태그에 있습니다.
+> **현재 버전: v3.0** — 목적 중심 재설계. 지원/보류 판정과 합격 가능성 예측을 없애고 판단 재료만 줍니다. 고치는 범위를 1장과 자기소개서로 좁히고, 그 둘은 다섯 관점(5-Color)으로 제대로 평가합니다. 전체 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md) 참조. 이전 버전은 [`archive/v2.0` 브랜치](https://github.com/jason-risk-lab/career-jd-matcher/tree/archive/v2.0), [`v1.8` 태그](https://github.com/jason-risk-lab/career-jd-matcher/tree/v1.8)에 있습니다.
 
 ## 왜 이렇게 만들었나
 
